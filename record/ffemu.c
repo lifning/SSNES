@@ -58,8 +58,8 @@ struct ff_video_info
    uint8_t *outbuf;
    size_t outbuf_size;
 
-   enum PixelFormat fmt;
-   enum PixelFormat pix_fmt;
+   enum AVPixelFormat fmt;
+   enum AVPixelFormat pix_fmt;
    size_t pix_size;
 
    AVFormatContext *format;
@@ -146,7 +146,7 @@ static bool ffemu_init_audio(struct ff_audio_info *audio, struct ffemu_params *p
    if (!audio->buffer)
       return false;
 
-   audio->outbuf_size = FF_MIN_BUFFER_SIZE;
+   audio->outbuf_size = AV_INPUT_BUFFER_MIN_SIZE;
    audio->outbuf = (uint8_t*)av_malloc(audio->outbuf_size);
    if (!audio->outbuf)
       return false;
@@ -176,21 +176,21 @@ static bool ffemu_init_video(struct ff_video_info *video, const struct ffemu_par
    video->encoder = codec;
 
 #if AV_HAVE_BIGENDIAN
-   video->fmt = PIX_FMT_RGB555BE;
+   video->fmt = AV_PIX_FMT_RGB555BE;
 #else
-   video->fmt = PIX_FMT_RGB555LE;
+   video->fmt = AV_PIX_FMT_RGB555LE;
 #endif
    video->pix_size = sizeof(uint16_t);
    if (param->rgb32)
    {
-      video->fmt = PIX_FMT_RGB32;
+      video->fmt = AV_PIX_FMT_RGB32;
       video->pix_size = sizeof(uint32_t);
    }
 
 #ifdef HAVE_X264RGB
-   video->pix_fmt = g_settings.video.h264_record ? PIX_FMT_BGR24 : PIX_FMT_RGB32;
+   video->pix_fmt = g_settings.video.h264_record ? AV_PIX_FMT_BGR24 : AV_PIX_FMT_RGB32;
 #else
-   video->pix_fmt = PIX_FMT_RGB32;
+   video->pix_fmt = AV_PIX_FMT_RGB32;
 #endif
 
 #ifdef HAVE_FFMPEG_ALLOC_CONTEXT3
@@ -240,7 +240,7 @@ static bool ffemu_init_video(struct ff_video_info *video, const struct ffemu_par
 
    size_t size = avpicture_get_size(video->pix_fmt, param->out_width, param->out_height);
    video->conv_frame_buf = (uint8_t*)av_malloc(size);
-   video->conv_frame = avcodec_alloc_frame();
+   video->conv_frame = av_frame_alloc();
    avpicture_fill((AVPicture*)video->conv_frame, video->conv_frame_buf, video->pix_fmt, param->out_width, param->out_height);
 
    return true;
@@ -285,7 +285,7 @@ static bool ffemu_init_muxer(ffemu_t *handle)
    stream->codec = handle->video.codec;
 
    if (ctx->oformat->flags & AVFMT_GLOBALHEADER)
-      handle->video.codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+      handle->video.codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
    handle->muxer.vstream = stream;
    handle->muxer.vstream->sample_aspect_ratio = handle->video.codec->sample_aspect_ratio;
 
@@ -297,7 +297,7 @@ static bool ffemu_init_muxer(ffemu_t *handle)
    stream->codec = handle->audio.codec;
 
    if (ctx->oformat->flags & AVFMT_GLOBALHEADER)
-      handle->audio.codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+      handle->audio.codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
    handle->muxer.astream = stream;
 
 #ifdef HAVE_X264RGB // Avoids a warning at end about non-monotonically increasing DTS values. It seems to be harmless to disable this.
@@ -626,7 +626,7 @@ static bool encode_audio(ffemu_t *handle, AVPacket *pkt, bool dry)
 
 #ifdef HAVE_FFMPEG_AVCODEC_ENCODE_AUDIO2
    AVFrame frame;
-   avcodec_get_frame_defaults(&frame);
+   av_frame_unref(&frame);
 
    frame.nb_samples = handle->audio.frames_in_buffer;
    frame.pts = handle->audio.frame_cnt;
