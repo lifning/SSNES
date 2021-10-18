@@ -133,6 +133,7 @@ fi
 check_lib STRL -lc strlcpy
 
 check_pkgconf PYTHON python3
+check_pkgconf PYTHON python3-embed
 
 add_define_make OS $OS
 
