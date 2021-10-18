@@ -126,7 +126,7 @@ static void init_sinc_table(ssnes_resampler_t *resamp)
 }
 
 // No memalign() for us on Win32 ...
-static void *aligned_alloc(size_t boundary, size_t size)
+static void *my_aligned_alloc(size_t boundary, size_t size)
 {
    void *ptr = malloc(boundary + size + sizeof(uintptr_t));
    if (!ptr)
@@ -139,7 +139,7 @@ static void *aligned_alloc(size_t boundary, size_t size)
    return (void*)addr;
 }
 
-static void aligned_free(void *ptr)
+static void my_aligned_free(void *ptr)
 {
    void **p = (void**)ptr;
    free(p[-1]);
@@ -147,7 +147,7 @@ static void aligned_free(void *ptr)
 
 ssnes_resampler_t *resampler_new(void)
 {
-   ssnes_resampler_t *re = (ssnes_resampler_t*)aligned_alloc(16, sizeof(*re));
+   ssnes_resampler_t *re = (ssnes_resampler_t*)my_aligned_alloc(16, sizeof(*re));
    if (!re)
       return NULL;
 
@@ -274,6 +274,6 @@ void resampler_process(ssnes_resampler_t *re, struct resampler_data *data)
 
 void resampler_free(ssnes_resampler_t *re)
 {
-   aligned_free(re);
+   my_aligned_free(re);
 }
 
